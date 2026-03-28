@@ -1,19 +1,20 @@
 import { useState, useRef, useEffect } from 'react'
 import {
   Plus,
-  Image as ImageIcon,
-  Tag,
+  Check,
+  ImageIcon,
   Palette,
-  TrendingUp,
+  Type,
+  Tags,
   BarChart2,
-  Settings,
+  Loader2,
   LogOut,
   Layers,
-  Flame,
-  Star,
   Eye,
-  Check,
-  Loader2
+  Settings,
+  User,
+  Star,
+  Tag
 } from 'lucide-react'
 
 interface Wallpaper {
@@ -27,6 +28,18 @@ interface Wallpaper {
   viewCount: number;
 }
 
+interface Category {
+  id: number;
+  name: string;
+  imageUrl: string;
+}
+
+interface TopPick {
+  id: number;
+  name: string;
+  imageUrl: string;
+}
+
 interface UserProfile {
   id: number;
   email: string;
@@ -35,21 +48,13 @@ interface UserProfile {
   photoUrl: string | null;
 }
 
-const CATEGORIES = [
-  'Abstract', 'Aesthatic', 'AI', 'Animals', 'Art', 'Birds', 'Bokeh', 'Buildings', 
-  'Flowers', 'Foods', 'Galaxy', 'Gradient', 'Historical', 'Horror', 'Insects', 
-  'Landscapes', 'Love', 'Minimal', 'Music', 'Nature', 'Neon', 'Pattern', 
-  'Rainbow', 'Seascapes', 'Shadow', 'Sunrise & Sunset', 'Texture', 'Vehicles', 
-  'Vibrant', 'Vintage'
-];
 const COLORS = ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink', 'Black', 'White', 'Cyan', 'Indigo'];
 const TYPES = ['Trending', 'Hot', 'New'];
-const TOP_PICKS = ['Coal Black', 'Lovely Vibe', 'Speed Snap', 'Beach Life', 'Wild Life'];
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [view, setView] = useState<'upload' | 'list' | 'users'>('upload');
+  const [view, setView] = useState<'upload' | 'list' | 'users' | 'categories' | 'top-picks'>('upload');
 
   const [formData, setFormData] = useState<Partial<Wallpaper>>({
     id: 0,
@@ -62,16 +67,27 @@ function App() {
     viewCount: 0
   });
 
+  const [catFormData, setCatFormData] = useState<Partial<Category>>({ id: 0, name: '', imageUrl: '' });
+  const [tpFormData, setTpFormData] = useState<Partial<TopPick>>({ id: 0, name: '', imageUrl: '' });
+
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [topPicks, setTopPicks] = useState<TopPick[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [isLoadingCats, setIsLoadingCats] = useState(false);
+  const [isLoadingTP, setIsLoadingTP] = useState(false);
 
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [catPreviewUrl, setCatPreviewUrl] = useState<string>('');
+  const [tpPreviewUrl, setTpPreviewUrl] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const catFileInputRef = useRef<HTMLInputElement>(null);
+  const tpFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('pixelWallAdminToken');
@@ -84,6 +100,28 @@ function App() {
   const refreshData = () => {
     fetchWallpapers();
     fetchUsers();
+    fetchCategories();
+    fetchTopPicks();
+  };
+
+  const fetchCategories = async () => {
+    setIsLoadingCats(true);
+    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
+    try {
+      const response = await fetch(`${apiBase}/api/Admin/categories`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` } });
+      if (response.ok) setCategories(await response.json());
+    } catch (err) { console.error(err); }
+    finally { setIsLoadingCats(false); }
+  };
+
+  const fetchTopPicks = async () => {
+    setIsLoadingTP(true);
+    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
+    try {
+      const response = await fetch(`${apiBase}/api/Admin/top-picks`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` } });
+      if (response.ok) setTopPicks(await response.json());
+    } catch (err) { console.error(err); }
+    finally { setIsLoadingTP(false); }
   };
 
   const fetchWallpapers = async () => {
@@ -192,14 +230,12 @@ function App() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Show local preview immediately
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreviewUrl(reader.result as string);
     };
     reader.readAsDataURL(file);
 
-    // Upload to API
     const token = localStorage.getItem('pixelWallAdminToken');
     if (!token) {
       setMessage({ text: 'You must be logged in to upload.', type: 'error' });
@@ -262,7 +298,6 @@ function App() {
 
       if (response.ok) {
         setMessage({ text: `Wallpaper ${formData.id ? 'updated' : 'saved'} successfully!`, type: 'success' });
-        // Reset form
         setFormData({
           id: 0,
           title: '',
@@ -289,6 +324,112 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('pixelWallAdminToken');
     setIsLoggedIn(false);
+  };
+
+  const handleCatFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => setCatPreviewUrl(reader.result as string);
+    reader.readAsDataURL(file);
+
+    const apiFormData = new FormData();
+    apiFormData.append('file', file);
+    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
+    try {
+      const response = await fetch(`${apiBase}/api/Admin/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` },
+        body: apiFormData
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCatFormData(prev => ({ ...prev, imageUrl: data.imageUrl }));
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleTpFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => setTpPreviewUrl(reader.result as string);
+    reader.readAsDataURL(file);
+
+    const apiFormData = new FormData();
+    apiFormData.append('file', file);
+    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
+    try {
+      const response = await fetch(`${apiBase}/api/Admin/upload`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` },
+        body: apiFormData
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTpFormData(prev => ({ ...prev, imageUrl: data.imageUrl }));
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleCatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
+    try {
+      const response = await fetch(`${apiBase}/api/Admin/category/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` },
+        body: JSON.stringify(catFormData)
+      });
+      if (response.ok) {
+        setMessage({ text: 'Category saved!', type: 'success' });
+        setCatFormData({ id: 0, name: '', imageUrl: '' });
+        setCatPreviewUrl('');
+        fetchCategories();
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleTpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
+    try {
+      const response = await fetch(`${apiBase}/api/Admin/top-pick/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` },
+        body: JSON.stringify(tpFormData)
+      });
+      if (response.ok) {
+        setMessage({ text: 'Top Pick saved!', type: 'success' });
+        setTpFormData({ id: 0, name: '', imageUrl: '' });
+        setTpPreviewUrl('');
+        fetchTopPicks();
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleDeleteCat = async (id: number) => {
+    if (!window.confirm('Delete category?')) return;
+    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
+    try {
+      const response = await fetch(`${apiBase}/api/Admin/category-delete/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` }
+      });
+      if (response.ok) fetchCategories();
+    } catch (err) { console.error(err); }
+  };
+
+  const handleDeleteTP = async (id: number) => {
+    if (!window.confirm('Delete top pick?')) return;
+    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
+    try {
+      const response = await fetch(`${apiBase}/api/Admin/top-pick-delete/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` }
+      });
+      if (response.ok) fetchTopPicks();
+    } catch (err) { console.error(err); }
   };
 
   if (!isLoggedIn) {
@@ -345,7 +486,9 @@ function App() {
         <nav className="nav-links">
           <a href="#" className={`nav-link ${view === 'upload' ? 'active' : ''}`} onClick={() => setView('upload')}><Layers size={20} /> <span>{formData.id ? 'Edit' : 'Upload'}</span></a>
           <a href="#" className={`nav-link ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}><BarChart2 size={20} /> <span>Wallpapers</span></a>
-          <a href="#" className={`nav-link ${view === 'users' ? 'active' : ''}`} onClick={() => setView('users')}><Tag size={20} /> <span>Users</span></a>
+          <a href="#" className={`nav-link ${view === 'categories' ? 'active' : ''}`} onClick={() => setView('categories')}><Tag size={20} /> <span>Categories</span></a>
+          <a href="#" className={`nav-link ${view === 'top-picks' ? 'active' : ''}`} onClick={() => setView('top-picks')}><Star size={20} /> <span>Top Picks</span></a>
+          <a href="#" className={`nav-link ${view === 'users' ? 'active' : ''}`} onClick={() => setView('users')}><User size={20} /> <span>Users</span></a>
         </nav>
         <div className="sidebar-footer">
           <a href="#" className="nav-link" onClick={handleLogout}><LogOut size={20} /> <span>Logout</span></a>
@@ -355,7 +498,7 @@ function App() {
       <main className="main-content">
         <header className="header">
           <div>
-            <h1>{view === 'upload' ? (formData.id ? 'Edit Wallpaper' : 'Upload Wallpaper') : view === 'list' ? 'Manage Wallpapers' : 'User Management'}</h1>
+            <h1>{view === 'upload' ? (formData.id ? 'Edit Wallpaper' : 'Upload Wallpaper') : view === 'list' ? 'Manage Wallpapers' : view === 'categories' ? 'Manage Categories' : view === 'top-picks' ? 'Manage Top Picks' : 'User Management'}</h1>
             <p className="header-desc">Manage your high-quality visual collection.</p>
           </div>
           {message.text && (
@@ -366,276 +509,174 @@ function App() {
           )}
         </header>
 
-        {view === 'upload' ? (
+        {view === 'upload' && (
           <form className="form-grid" onSubmit={handleSubmit}>
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label>Title</label>
-                {formData.id !== 0 && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormData({ id: 0, title: '', imageUrl: '', categories: '', colors: '', types: '', topPicks: '', viewCount: 0 });
-                      setPreviewUrl('');
-                    }}
-                    style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.75rem' }}
-                  >
-                    Clear Edit Mode
-                  </button>
-                )}
-              </div>
-              <input
-                type="text"
-                className="input-field"
-                placeholder="e.g. Neon Cyberpunk City"
-                value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                required
-              />
+              <label>Title</label>
+              <input type="text" placeholder="e.g. Neon Cyberpunk City" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} required />
             </div>
 
-            <div
-              className="file-upload-zone"
-              onClick={() => fileInputRef.current?.click()}
-            >
+            <div className="file-upload-zone" onClick={() => fileInputRef.current?.click()} style={{ gridColumn: 'span 2' }}>
               {isUploading ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                  <Loader2 className="animate-spin" size={48} color="var(--primary)" />
-                  <p>Uploading and compressing image...</p>
-                </div>
+                <div style={{ textAlign: 'center' }}><Loader2 className="animate-spin" size={48} /> <p>Processing...</p></div>
               ) : previewUrl ? (
-                <img
-                  src={(() => {
-                    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
-                    if (previewUrl.startsWith('data:') || previewUrl.startsWith('http')) return previewUrl;
-                    if (previewUrl.includes('\\') || previewUrl.includes(':')) {
-                      const parts = previewUrl.split(/[\\/]/);
-                      return `${apiBase}/wallpapers/${parts[parts.length - 1]}`;
-                    }
-                    return `${apiBase}${previewUrl}`;
-                  })()}
-                  alt="Preview"
-                  className="preview-image"
-                />
+                <img src={previewUrl} alt="Preview" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '12px' }} />
               ) : (
                 <>
-                  <div style={{ padding: '1.5rem', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)' }}>
-                    <ImageIcon size={40} />
-                  </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <p style={{ fontWeight: 600, fontSize: '1.125rem' }}>Click to upload wallpaper</p>
-                    <p style={{ color: 'var(--text-dim)', fontSize: '0.875rem' }}>PNG, JPG or WebP. Max 10MB.</p>
-                  </div>
+                  <div className="upload-icon-wrapper"><Plus size={32} /></div>
+                  <h3>Upload Wallpaper</h3>
+                  <p>Click to select image</p>
                 </>
               )}
-              <input
-                type="file"
-                ref={fileInputRef}
-                style={{ display: 'none' }}
-                accept="image/*"
-                onChange={handleFileChange}
-              />
+              <input type="file" ref={fileInputRef} hidden onChange={handleFileChange} accept="image/*" />
             </div>
 
             <div className="form-group">
-              <label><Tag size={14} style={{ marginRight: '0.5rem' }} /> Category</label>
+              <label><Tags size={14} /> Categories</label>
               <div className="tags-container">
-                {CATEGORIES.map(cat => (
-                  <div
-                    key={cat}
-                    className={`tag-option ${formData.categories?.split(',').includes(cat) ? 'selected' : ''}`}
-                    onClick={() => toggleArrayItem('categories', cat)}
-                  >
-                    {cat}
-                  </div>
+                {categories.map(cat => (
+                  <div key={cat.id} className={`tag-option ${formData.categories?.split(',').includes(cat.name) ? 'selected' : ''}`} onClick={() => toggleArrayItem('categories', cat.name)}>{cat.name}</div>
                 ))}
               </div>
             </div>
 
             <div className="form-group">
-              <label><Palette size={14} style={{ marginRight: '0.5rem' }} /> Primary Colors</label>
+              <label><Palette size={14} /> Colors</label>
               <div className="tags-container">
-                {COLORS.map(color => (
-                  <div
-                    key={color}
-                    className={`tag-option ${formData.colors?.split(',').includes(color) ? 'selected' : ''}`}
-                    onClick={() => toggleArrayItem('colors', color)}
-                  >
-                    {color}
-                  </div>
+                {COLORS.map(c => (
+                  <div key={c} className={`tag-option ${formData.colors?.split(',').includes(c) ? 'selected' : ''}`} onClick={() => toggleArrayItem('colors', c)}>{c}</div>
                 ))}
               </div>
             </div>
 
             <div className="form-group">
-              <label><TrendingUp size={14} style={{ marginRight: '0.5rem' }} /> Featured Status</label>
+              <label><Type size={14} /> Types</label>
               <div className="tags-container">
-                {TYPES.map(type => (
-                  <div
-                    key={type}
-                    className={`tag-option ${formData.types?.split(',').includes(type) ? 'selected' : ''}`}
-                    onClick={() => toggleArrayItem('types', type)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                  >
-                    {type === 'Trending' && <TrendingUp size={14} />}
-                    {type === 'Hot' && <Flame size={14} />}
-                    {type === 'New' && <Star size={14} />}
-                    {type}
-                  </div>
+                {TYPES.map(t => (
+                  <div key={t} className={`tag-option ${formData.types?.split(',').includes(t) ? 'selected' : ''}`} onClick={() => toggleArrayItem('types', t)}>{t}</div>
                 ))}
               </div>
             </div>
 
             <div className="form-group">
-              <label><Star size={14} style={{ marginRight: '0.5rem' }} /> Top Picks</label>
+              <label><Star size={14} /> Top Picks</label>
               <div className="tags-container">
-                {TOP_PICKS.map(pick => (
-                  <div
-                    key={pick}
-                    className={`tag-option ${formData.topPicks?.split(',').includes(pick) ? 'selected' : ''}`}
-                    onClick={() => toggleArrayItem('topPicks', pick)}
-                  >
-                    {pick}
-                  </div>
+                {topPicks.map(p => (
+                  <div key={p.id} className={`tag-option ${formData.topPicks?.split(',').includes(p.name) ? 'selected' : ''}`} onClick={() => toggleArrayItem('topPicks', p.name)}>{p.name}</div>
                 ))}
               </div>
             </div>
 
-            <div className="form-group">
-              <label><Eye size={14} style={{ marginRight: '0.5rem' }} /> View Count</label>
-              <input
-                type="number"
-                className="input-field"
-                value={formData.viewCount}
-                onChange={(e) => setFormData({ ...formData, viewCount: parseInt(e.target.value) || 0 })}
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="submit-btn"
-              disabled={isSubmitting || isUploading || !formData.title || !formData.imageUrl}
-            >
-              {isSubmitting ? (
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                  <Loader2 className="animate-spin" size={20} />
-                  Saving to Database...
-                </span>
-              ) : (
-                formData.id ? 'Update Wallpaper' : 'Publish Wallpaper'
-              )}
+            <button type="submit" className="submit-btn" disabled={isSubmitting} style={{ gridColumn: 'span 2' }}>
+              {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : (formData.id ? 'Update Wallpaper' : 'Publish Wallpaper')}
             </button>
           </form>
-        ) : view === 'list' ? (
-          <div style={{ background: 'rgba(30, 41, 59, 0.4)', borderRadius: '24px', padding: '2rem', border: '1px solid var(--border)' }}>
-            <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2>Manage Wallpapers</h2>
+        )}
+
+        {view === 'list' && (
+          <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2>All Wallpapers ({wallpapers.length})</h2>
               <button onClick={fetchWallpapers} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}>Refresh</button>
             </div>
-
-            {isLoadingList ? (
-              <div style={{ padding: '4rem', textAlign: 'center' }}><Loader2 className="animate-spin" size={40} style={{ margin: '0 auto' }} /></div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
+            {isLoadingList ? <div style={{ textAlign: 'center' }}><Loader2 className="animate-spin" size={40} /></div> : (
+              <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
                 {wallpapers.map(wp => (
-                  <div key={wp.id} style={{ background: 'var(--surface)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                  <div key={wp.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
                     <div style={{ height: '150px', position: 'relative' }}>
-                      <img
-                        src={(() => {
-                          const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
-                          if (!wp.imageUrl) return 'https://placehold.co/400x300?text=No+Path';
-                          if (wp.imageUrl.startsWith('http')) return wp.imageUrl;
-
-                          // If it's a local Windows path from an old test, extract filename
-                          if (wp.imageUrl.includes('\\') || wp.imageUrl.includes(':')) {
-                            const parts = wp.imageUrl.split(/[\\/]/);
-                            const fileName = parts[parts.length - 1];
-                            return `${apiBase}/wallpapers/${fileName}`;
-                          }
-                          return `${apiBase}${wp.imageUrl}`;
-                        })()}
-                        alt={wp.title}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = 'https://placehold.co/400x300?text=Image+Missing';
-                        }}
-                      />
-                      <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '5px' }}>
-                        <button onClick={() => handleEdit(wp)} style={{ padding: '8px', borderRadius: '50%', border: 'none', background: 'var(--primary)', color: 'white', cursor: 'pointer' }}><Settings size={14} /></button>
-                        <button onClick={() => handleDelete(wp.id)} style={{ padding: '8px', borderRadius: '50%', border: 'none', background: '#ef4444', color: 'white', cursor: 'pointer' }}><Plus style={{ transform: 'rotate(45deg)' }} size={14} /></button>
+                      <img src={wp.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <div style={{ position: 'absolute', top: 5, right: 5, display: 'flex', gap: '5px' }}>
+                        <button onClick={() => handleEdit(wp)} style={{ padding: '6px', borderRadius: '50%', border: 'none', background: 'var(--primary)', color: 'white' }}><Settings size={12} /></button>
+                        <button onClick={() => handleDelete(wp.id)} style={{ padding: '6px', borderRadius: '50%', border: 'none', background: '#ef4444', color: 'white' }}><Plus style={{ transform: 'rotate(45deg)' }} size={12} /></button>
                       </div>
                     </div>
                     <div style={{ padding: '1rem' }}>
-                      <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{wp.title}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Eye size={12} /> {wp.viewCount} Views
-                      </div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{wp.title}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{wp.categories} | {wp.viewCount} views</div>
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        ) : (
-          <div style={{ background: 'rgba(30, 41, 59, 0.4)', borderRadius: '24px', padding: '2rem', border: '1px solid var(--border)' }}>
-            <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2>Registered Users</h2>
+        )}
+
+        {view === 'users' && (
+          <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2>User Management</h2>
               <button onClick={fetchUsers} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}>Refresh</button>
             </div>
-
-            {isLoadingUsers ? (
-              <div style={{ padding: '4rem', textAlign: 'center' }}><Loader2 className="animate-spin" size={40} style={{ margin: '0 auto' }} /></div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.875rem' }}>
-                      <th style={{ padding: '1rem' }}>User</th>
-                      <th style={{ padding: '1rem' }}>Role</th>
-                      <th style={{ padding: '1rem' }}>Actions</th>
+            {isLoadingUsers ? <div style={{ textAlign: 'center' }}><Loader2 className="animate-spin" size={40} /></div> : (
+              <table>
+                <thead><tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}><th>Email</th><th>Role</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {users.map(u => (
+                    <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '1rem' }}>{u.email}</td>
+                      <td>{u.role}</td>
+                      <td><button onClick={() => handleDeleteUser(u.id)} style={{ padding: '6px', borderRadius: '8px', border: 'none', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}><Plus style={{ transform: 'rotate(45deg)' }} size={16} /></button></td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {users.map(user => (
-                      <tr key={user.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--surface)', overflow: 'hidden' }}>
-                              <img src={user.photoUrl || `https://ui-avatars.com/api/?name=${user.email}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            </div>
-                            <div>
-                              <div style={{ fontWeight: 600 }}>{user.displayName || 'Unnamed User'}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{user.email}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '1rem' }}>
-                          <span style={{
-                            padding: '0.25rem 0.75rem',
-                            borderRadius: '12px',
-                            fontSize: '0.75rem',
-                            background: user.role === 'Admin' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(148, 163, 184, 0.2)',
-                            color: user.role === 'Admin' ? 'var(--primary)' : 'var(--text-dim)',
-                            border: `1px solid ${user.role === 'Admin' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(148, 163, 184, 0.3)'}`
-                          }}>
-                            {user.role}
-                          </span>
-                        </td>
-                        <td style={{ padding: '1rem' }}>
-                          <button
-                            onClick={() => handleDeleteUser(user.id)}
-                            style={{ padding: '8px', borderRadius: '8px', border: 'none', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', cursor: 'pointer' }}
-                          >
-                            <Plus style={{ transform: 'rotate(45deg)' }} size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </tbody>
+              </table>
             )}
+          </div>
+        )}
+
+        {view === 'categories' && (
+          <div className="form-grid" style={{ gridTemplateColumns: '300px 1fr' }}>
+            <div className="form-section">
+              <h3>Add Category</h3>
+              <form onSubmit={handleCatSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <input type="text" placeholder="Category Name" value={catFormData.name} onChange={e => setCatFormData({...catFormData, name: e.target.value})} required />
+                <div className="file-upload-zone" onClick={() => catFileInputRef.current?.click()} style={{ minHeight: '120px' }}>
+                  {catPreviewUrl ? <img src={catPreviewUrl} style={{ maxHeight: '80px', borderRadius: '8px' }} /> : <Plus size={24} />}
+                  <input type="file" ref={catFileInputRef} hidden onChange={handleCatFileChange} />
+                </div>
+                <button type="submit" className="submit-btn" disabled={isLoadingCats}>Save</button>
+              </form>
+            </div>
+            <div className="form-section">
+              <h3>Existing Categories</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '1rem' }}>
+                {categories.map(c => (
+                  <div key={c.id} className="card" style={{ padding: '0.5rem', position: 'relative' }}>
+                    <img src={c.imageUrl} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />
+                    <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>{c.name}</p>
+                    <button onClick={() => handleDeleteCat(c.id)} style={{ position: 'absolute', top: 5, right: 5, background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Plus style={{ transform: 'rotate(45deg)' }} size={12} /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === 'top-picks' && (
+          <div className="form-grid" style={{ gridTemplateColumns: '300px 1fr' }}>
+            <div className="form-section">
+              <h3>Add Top Pick</h3>
+              <form onSubmit={handleTpSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <input type="text" placeholder="Title" value={tpFormData.name} onChange={e => setTpFormData({...tpFormData, name: e.target.value})} required />
+                <div className="file-upload-zone" onClick={() => tpFileInputRef.current?.click()} style={{ minHeight: '120px' }}>
+                  {tpPreviewUrl ? <img src={tpPreviewUrl} style={{ maxHeight: '80px', borderRadius: '8px' }} /> : <Plus size={24} />}
+                  <input type="file" ref={tpFileInputRef} hidden onChange={handleTpFileChange} />
+                </div>
+                <button type="submit" className="submit-btn" disabled={isLoadingTP}>Save</button>
+              </form>
+            </div>
+            <div className="form-section">
+              <h3>Existing Picks</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '1rem' }}>
+                {topPicks.map(t => (
+                  <div key={t.id} className="card" style={{ padding: '0.5rem', position: 'relative' }}>
+                    <img src={t.imageUrl} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />
+                    <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>{t.name}</p>
+                    <button onClick={() => handleDeleteTP(t.id)} style={{ position: 'absolute', top: 5, right: 5, background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Plus style={{ transform: 'rotate(45deg)' }} size={12} /></button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
       </main>
