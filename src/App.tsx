@@ -69,6 +69,7 @@ function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [view, setView] = useState<'upload' | 'list' | 'users' | 'categories' | 'top-picks'>('upload');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [formData, setFormData] = useState<Partial<Wallpaper>>({
     id: 0,
@@ -534,14 +535,23 @@ function App() {
 
   return (
     <div className="admin-container">
-      <aside className="sidebar">
+      <div className="mobile-header">
+        <button className="hamburger-btn" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          {mobileMenuOpen ? '✕' : '☰'}
+        </button>
+        <div className="logo" style={{ fontSize: '1rem', marginBottom: 0 }}>PIXELWALL<span>.ADMIN</span></div>
+      </div>
+      
+      <div className={`sidebar-overlay ${mobileMenuOpen ? 'active' : ''}`} onClick={() => setMobileMenuOpen(false)}></div>
+      
+      <aside className={`sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="logo">PIXELWALL<span>.ADMIN</span></div>
         <nav className="nav-links">
-          <a href="#" className={`nav-link ${view === 'upload' ? 'active' : ''}`} onClick={() => setView('upload')}><Layers size={20} /> <span>{formData.id ? 'Edit' : 'Upload'}</span></a>
-          <a href="#" className={`nav-link ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}><BarChart2 size={20} /> <span>Wallpapers</span></a>
-          <a href="#" className={`nav-link ${view === 'categories' ? 'active' : ''}`} onClick={() => setView('categories')}><Tag size={20} /> <span>Categories</span></a>
-          <a href="#" className={`nav-link ${view === 'top-picks' ? 'active' : ''}`} onClick={() => setView('top-picks')}><Star size={20} /> <span>Top Picks</span></a>
-          <a href="#" className={`nav-link ${view === 'users' ? 'active' : ''}`} onClick={() => setView('users')}><User size={20} /> <span>Users</span></a>
+          <a href="#" className={`nav-link ${view === 'upload' ? 'active' : ''}`} onClick={() => { setView('upload'); setMobileMenuOpen(false); }}><Layers size={20} /> <span>{formData.id ? 'Edit' : 'Upload'}</span></a>
+          <a href="#" className={`nav-link ${view === 'list' ? 'active' : ''}`} onClick={() => { setView('list'); setMobileMenuOpen(false); }}><BarChart2 size={20} /> <span>Wallpapers</span></a>
+          <a href="#" className={`nav-link ${view === 'categories' ? 'active' : ''}`} onClick={() => { setView('categories'); setMobileMenuOpen(false); }}><Tag size={20} /> <span>Categories</span></a>
+          <a href="#" className={`nav-link ${view === 'top-picks' ? 'active' : ''}`} onClick={() => { setView('top-picks'); setMobileMenuOpen(false); }}><Star size={20} /> <span>Top Picks</span></a>
+          <a href="#" className={`nav-link ${view === 'users' ? 'active' : ''}`} onClick={() => { setView('users'); setMobileMenuOpen(false); }}><User size={20} /> <span>Users</span></a>
         </nav>
         <div className="sidebar-footer">
           <a href="#" className="nav-link" onClick={handleLogout}><LogOut size={20} /> <span>Logout</span></a>
