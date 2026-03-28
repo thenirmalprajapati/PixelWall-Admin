@@ -49,7 +49,11 @@ interface UserProfile {
   photoUrl: string | null;
 }
 
-const COLORS = ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink', 'Black', 'White', 'Cyan', 'Indigo'];
+interface Color {
+  id: number;
+  name: string;
+}
+
 const TYPES = ['Trending', 'Hot', 'New'];
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'https://loopbit-pixelwall.azurewebsites.net';
@@ -68,7 +72,7 @@ function pickUploadUrl(data: Record<string, unknown>) {
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [view, setView] = useState<'upload' | 'list' | 'users' | 'categories' | 'top-picks'>('upload');
+  const [view, setView] = useState<'upload' | 'list' | 'users' | 'categories' | 'colors' | 'top-picks'>('upload');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [formData, setFormData] = useState<Partial<Wallpaper>>({
@@ -84,14 +88,17 @@ function App() {
 
   const [catFormData, setCatFormData] = useState<Partial<Category>>({ id: 0, name: '', imageUrl: '' });
   const [tpFormData, setTpFormData] = useState<Partial<TopPick>>({ id: 0, name: '', imageUrl: '' });
+  const [colorFormData, setColorFormData] = useState<Partial<Color>>({ id: 0, name: '' });
 
   const [wallpapers, setWallpapers] = useState<Wallpaper[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [topPicks, setTopPicks] = useState<TopPick[]>([]);
+  const [colors, setColors] = useState<Color[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoadingList, setIsLoadingList] = useState(false);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [isLoadingCats, setIsLoadingCats] = useState(false);
+  const [isLoadingColors, setIsLoadingColors] = useState(false);
   const [isLoadingTP, setIsLoadingTP] = useState(false);
 
   const [previewUrl, setPreviewUrl] = useState<string>('');
@@ -116,6 +123,7 @@ function App() {
     fetchWallpapers();
     fetchUsers();
     fetchCategories();
+    fetchColors();
     fetchTopPicks();
   };
 
@@ -137,6 +145,16 @@ function App() {
       else if (response.status === 401) setMessage({ text: 'Session expired. Log in again.', type: 'error' });
     } catch (err) { console.error(err); }
     finally { setIsLoadingTP(false); }
+  };
+
+  const fetchColors = async () => {
+    setIsLoadingColors(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/Admin/colors`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` } });
+      if (response.ok) setColors(await response.json());
+      else if (response.status === 401) setMessage({ text: 'Session expired. Log in again.', type: 'error' });
+    } catch (err) { console.error(err); }
+    finally { setIsLoadingColors(false); }
   };
 
   const fetchWallpapers = async () => {
@@ -340,6 +358,10 @@ function App() {
     if (catFileInputRef.current) catFileInputRef.current.value = '';
   };
 
+  const resetColorForm = () => {
+    setColorFormData({ id: 0, name: '' });
+  };
+
   const resetTpForm = () => {
     setTpFormData({ id: 0, name: '', imageUrl: '' });
     setTpPreviewUrl('');
@@ -486,6 +508,47 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
+  const handleColorSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!colorFormData.name?.trim()) {
+      setMessage({ text: 'Enter a color name.', type: 'error' });
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE}/api/Admin/color/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` },
+        body: JSON.stringify(colorFormData)
+      });
+      if (response.ok) {
+        setMessage({ text: colorFormData.id ? 'Color updated.' : 'Color saved.', type: 'success' });
+        resetColorForm();
+        fetchColors();
+      } else {
+        let msg = 'Could not save color.';
+        try {
+          const err = await response.json() as { message?: string };
+          if (err.message) msg = err.message;
+        } catch { /* ignore */ }
+        setMessage({ text: msg, type: 'error' });
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  const handleDeleteColor = async (id: number) => {
+    if (!window.confirm('Delete this color?')) return;
+    try {
+      const response = await fetch(`${API_BASE}/api/Admin/color-delete/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` }
+      });
+      if (response.ok) {
+        if (colorFormData.id === id) resetColorForm();
+        fetchColors();
+      }
+    } catch (err) { console.error(err); }
+  };
+
   if (!isLoggedIn) {
     return (
       <div style={{
@@ -550,6 +613,7 @@ function App() {
           <a href="#" className={`nav-link ${view === 'upload' ? 'active' : ''}`} onClick={() => { setView('upload'); setMobileMenuOpen(false); }}><Layers size={20} /> <span>{formData.id ? 'Edit' : 'Upload'}</span></a>
           <a href="#" className={`nav-link ${view === 'list' ? 'active' : ''}`} onClick={() => { setView('list'); setMobileMenuOpen(false); }}><BarChart2 size={20} /> <span>Wallpapers</span></a>
           <a href="#" className={`nav-link ${view === 'categories' ? 'active' : ''}`} onClick={() => { setView('categories'); setMobileMenuOpen(false); }}><Tag size={20} /> <span>Categories</span></a>
+          <a href="#" className={`nav-link ${view === 'colors' ? 'active' : ''}`} onClick={() => { setView('colors'); setMobileMenuOpen(false); }}><Palette size={20} /> <span>Colors</span></a>
           <a href="#" className={`nav-link ${view === 'top-picks' ? 'active' : ''}`} onClick={() => { setView('top-picks'); setMobileMenuOpen(false); }}><Star size={20} /> <span>Top Picks</span></a>
           <a href="#" className={`nav-link ${view === 'users' ? 'active' : ''}`} onClick={() => { setView('users'); setMobileMenuOpen(false); }}><User size={20} /> <span>Users</span></a>
         </nav>
@@ -561,7 +625,7 @@ function App() {
       <main className="main-content">
         <header className="header">
           <div>
-            <h1>{view === 'upload' ? (formData.id ? 'Edit Wallpaper' : 'Upload Wallpaper') : view === 'list' ? 'Manage Wallpapers' : view === 'categories' ? 'Manage Categories' : view === 'top-picks' ? 'Manage Top Picks' : 'User Management'}</h1>
+            <h1>{view === 'upload' ? (formData.id ? 'Edit Wallpaper' : 'Upload Wallpaper') : view === 'list' ? 'Manage Wallpapers' : view === 'categories' ? 'Manage Categories' : view === 'colors' ? 'Manage Colors' : view === 'top-picks' ? 'Manage Top Picks' : 'User Management'}</h1>
             <p className="header-desc">Manage your high-quality visual collection.</p>
           </div>
           {message.text && (
@@ -609,8 +673,8 @@ function App() {
             <div className="form-group">
               <label><Palette size={14} /> Colors</label>
               <div className="tags-container">
-                {COLORS.map(c => (
-                  <div key={c} className={`tag-option ${formData.colors?.split(',').includes(c) ? 'selected' : ''}`} onClick={() => toggleArrayItem('colors', c)}>{c}</div>
+                {colors.map(c => (
+                  <div key={c.id} className={`tag-option ${formData.colors?.split(',').includes(c.name) ? 'selected' : ''}`} onClick={() => toggleArrayItem('colors', c.name)}>{c.name}</div>
                 ))}
               </div>
             </div>
@@ -761,6 +825,65 @@ function App() {
                       </div>
                       <div className="catalog-card-body">
                         <span className="catalog-card-name">{c.name}</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {view === 'colors' && (
+          <div className="form-grid catalog-layout">
+            <div className="catalog-form-card">
+              <h3 className="catalog-form-title">{colorFormData.id ? 'Edit color' : 'New color'}</h3>
+              <p className="catalog-form-hint">Set a color name for the color palette. Colors are used to tag wallpapers.</p>
+              <form className="catalog-form" onSubmit={handleColorSubmit}>
+                <div className="form-group">
+                  <label>Color name</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="e.g. Red, Blue, Green"
+                    value={colorFormData.name ?? ''}
+                    onChange={e => setColorFormData({ ...colorFormData, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="catalog-form-actions">
+                  <button type="submit" className="submit-btn catalog-submit" disabled={isLoadingColors}>
+                    {isLoadingColors ? <Loader2 className="animate-spin" size={20} /> : (colorFormData.id ? 'Update color' : 'Save color')}
+                  </button>
+                  {colorFormData.id !== 0 && (
+                    <button type="button" className="btn-secondary" onClick={resetColorForm}>Cancel edit</button>
+                  )}
+                </div>
+              </form>
+            </div>
+            <div className="catalog-list-panel">
+              <div className="catalog-list-header">
+                <h3>All colors</h3>
+                <span className="catalog-count">{colors.length}</span>
+              </div>
+              {isLoadingColors ? (
+                <div className="catalog-loading"><Loader2 className="animate-spin" size={36} /></div>
+              ) : colors.length === 0 ? (
+                <div className="catalog-empty">No colors yet. Add one on the left.</div>
+              ) : (
+                <div className="catalog-grid">
+                  {colors.map(col => (
+                    <article key={col.id} className="catalog-card">
+                      <div className="catalog-card-body" style={{ padding: '1.5rem', textAlign: 'center', borderTop: 'none' }}>
+                        <span className="catalog-card-name">{col.name}</span>
+                        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                          <button type="button" className="icon-btn icon-btn-edit" title="Edit" onClick={() => setColorFormData({ id: col.id, name: col.name })}>
+                            <Pencil size={14} />
+                          </button>
+                          <button type="button" className="icon-btn icon-btn-delete" title="Delete" onClick={() => handleDeleteColor(col.id)}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     </article>
                   ))}
