@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import {
   Plus,
   Check,
-  ImageIcon,
   Palette,
   Type,
   Tags,
@@ -10,7 +9,6 @@ import {
   Loader2,
   LogOut,
   Layers,
-  Eye,
   Settings,
   User,
   Star,
