@@ -343,32 +343,23 @@ function App() {
       <aside className="sidebar">
         <div className="logo">PIXELWALL<span>.ADMIN</span></div>
         <nav className="nav-links">
-          <a href="#" className={`nav-link ${view === 'upload' ? 'active' : ''}`} onClick={() => setView('upload')}><Layers size={20} /> {formData.id ? 'Edit' : 'Upload'}</a>
-          <a href="#" className={`nav-link ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}><BarChart2 size={20} /> Wallpapers</a>
-          <a href="#" className={`nav-link ${view === 'users' ? 'active' : ''}`} onClick={() => setView('users')}><Tag size={20} /> Users</a>
+          <a href="#" className={`nav-link ${view === 'upload' ? 'active' : ''}`} onClick={() => setView('upload')}><Layers size={20} /> <span>{formData.id ? 'Edit' : 'Upload'}</span></a>
+          <a href="#" className={`nav-link ${view === 'list' ? 'active' : ''}`} onClick={() => setView('list')}><BarChart2 size={20} /> <span>Wallpapers</span></a>
+          <a href="#" className={`nav-link ${view === 'users' ? 'active' : ''}`} onClick={() => setView('users')}><Tag size={20} /> <span>Users</span></a>
         </nav>
-        <div style={{ marginTop: 'auto' }}>
-          <a href="#" className="nav-link" onClick={handleLogout}><LogOut size={20} /> Logout</a>
+        <div className="sidebar-footer">
+          <a href="#" className="nav-link" onClick={handleLogout}><LogOut size={20} /> <span>Logout</span></a>
         </div>
       </aside>
 
       <main className="main-content">
         <header className="header">
           <div>
-            <h1>Upload New Wallpaper</h1>
-            <p style={{ color: 'var(--text-dim)', marginTop: '0.5rem' }}>Add high-quality visuals to your collection.</p>
+            <h1>{view === 'upload' ? (formData.id ? 'Edit Wallpaper' : 'Upload Wallpaper') : view === 'list' ? 'Manage Wallpapers' : 'User Management'}</h1>
+            <p className="header-desc">Manage your high-quality visual collection.</p>
           </div>
           {message.text && (
-            <div style={{
-              padding: '1rem 1.5rem',
-              borderRadius: '12px',
-              background: message.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-              color: message.type === 'success' ? 'var(--success)' : '#ef4444',
-              border: `1px solid ${message.type === 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem'
-            }}>
+            <div className={`notification ${message.type}`}>
               {message.type === 'success' ? <Check size={18} /> : <Plus style={{ transform: 'rotate(45deg)' }} size={18} />}
               {message.text}
             </div>
