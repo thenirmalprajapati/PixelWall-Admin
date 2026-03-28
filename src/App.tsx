@@ -12,7 +12,10 @@ import {
   Settings,
   User,
   Star,
-  Tag
+  Tag,
+  Trash2,
+  Pencil,
+  ImageIcon
 } from 'lucide-react'
 
 interface Wallpaper {
@@ -48,6 +51,19 @@ interface UserProfile {
 
 const COLORS = ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink', 'Black', 'White', 'Cyan', 'Indigo'];
 const TYPES = ['Trending', 'Hot', 'New'];
+
+const API_BASE = import.meta.env.VITE_API_URL ?? 'https://loopbit-pixelwall.azurewebsites.net';
+
+function mediaUrl(path: string | undefined | null) {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+function pickUploadUrl(data: Record<string, unknown>) {
+  const v = data.imageUrl ?? data.ImageUrl;
+  return typeof v === 'string' ? v : '';
+}
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -104,29 +120,28 @@ function App() {
 
   const fetchCategories = async () => {
     setIsLoadingCats(true);
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
     try {
-      const response = await fetch(`${apiBase}/api/Admin/categories`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` } });
+      const response = await fetch(`${API_BASE}/api/Admin/categories`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` } });
       if (response.ok) setCategories(await response.json());
+      else if (response.status === 401) setMessage({ text: 'Session expired. Log in again.', type: 'error' });
     } catch (err) { console.error(err); }
     finally { setIsLoadingCats(false); }
   };
 
   const fetchTopPicks = async () => {
     setIsLoadingTP(true);
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
     try {
-      const response = await fetch(`${apiBase}/api/Admin/top-picks`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` } });
+      const response = await fetch(`${API_BASE}/api/Admin/top-picks`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` } });
       if (response.ok) setTopPicks(await response.json());
+      else if (response.status === 401) setMessage({ text: 'Session expired. Log in again.', type: 'error' });
     } catch (err) { console.error(err); }
     finally { setIsLoadingTP(false); }
   };
 
   const fetchWallpapers = async () => {
     setIsLoadingList(true);
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
     try {
-      const response = await fetch(`${apiBase}/api/Admin/list?pageSize=50`);
+      const response = await fetch(`${API_BASE}/api/Admin/list?pageSize=50`);
       if (response.ok) {
         const data = await response.json();
         setWallpapers(data.items);
@@ -137,9 +152,8 @@ function App() {
 
   const fetchUsers = async () => {
     setIsLoadingUsers(true);
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
     try {
-      const response = await fetch(`${apiBase}/api/Admin/users`, {
+      const response = await fetch(`${API_BASE}/api/Admin/users`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` }
       });
       if (response.ok) {
@@ -152,16 +166,16 @@ function App() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
     try {
-      const response = await fetch(`${apiBase}/api/Admin/login`, {
+      const response = await fetch(`${API_BASE}/api/Admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginForm)
       });
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem('pixelWallAdminToken', data.token);
+        const token = data.token ?? data.Token;
+        localStorage.setItem('pixelWallAdminToken', token);
         setIsLoggedIn(true);
         refreshData();
       } else {
@@ -188,17 +202,14 @@ function App() {
 
   const handleEdit = (wp: Wallpaper) => {
     setFormData(wp);
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
-    const fullUrl = wp.imageUrl.startsWith('http') ? wp.imageUrl : `${apiBase}${wp.imageUrl}`;
-    setPreviewUrl(fullUrl);
+    setPreviewUrl(mediaUrl(wp.imageUrl));
     setView('upload');
   };
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this wallpaper?')) return;
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
     try {
-      const response = await fetch(`${apiBase}/api/Admin/delete/${id}`, {
+      const response = await fetch(`${API_BASE}/api/Admin/delete/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` }
       });
@@ -211,9 +222,8 @@ function App() {
 
   const handleDeleteUser = async (id: number) => {
     if (!window.confirm('Are you sure you want to delete this user?')) return;
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
     try {
-      const response = await fetch(`${apiBase}/api/Admin/user/${id}`, {
+      const response = await fetch(`${API_BASE}/api/Admin/user/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` }
       });
@@ -245,9 +255,8 @@ function App() {
     const apiFormData = new FormData();
     apiFormData.append('file', file);
 
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
     try {
-      const response = await fetch(`${apiBase}/api/Admin/upload`, {
+      const response = await fetch(`${API_BASE}/api/Admin/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}`
@@ -256,8 +265,9 @@ function App() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setFormData((prev: any) => ({ ...prev, imageUrl: data.imageUrl }));
+        const data = await response.json() as Record<string, unknown>;
+        const url = pickUploadUrl(data);
+        setFormData((prev: any) => ({ ...prev, imageUrl: url }));
         setMessage({ text: 'Image uploaded successfully!', type: 'success' });
       } else if (response.status === 401) {
         setMessage({ text: 'Session expired. Please log in again.', type: 'error' });
@@ -283,9 +293,8 @@ function App() {
     }
 
     setIsSubmitting(true);
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
     try {
-      const response = await fetch(`${apiBase}/api/Admin/save`, {
+      const response = await fetch(`${API_BASE}/api/Admin/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -324,6 +333,18 @@ function App() {
     setIsLoggedIn(false);
   };
 
+  const resetCatForm = () => {
+    setCatFormData({ id: 0, name: '', imageUrl: '' });
+    setCatPreviewUrl('');
+    if (catFileInputRef.current) catFileInputRef.current.value = '';
+  };
+
+  const resetTpForm = () => {
+    setTpFormData({ id: 0, name: '', imageUrl: '' });
+    setTpPreviewUrl('');
+    if (tpFileInputRef.current) tpFileInputRef.current.value = '';
+  };
+
   const handleCatFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -333,16 +354,18 @@ function App() {
 
     const apiFormData = new FormData();
     apiFormData.append('file', file);
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
     try {
-      const response = await fetch(`${apiBase}/api/Admin/upload`, {
+      const response = await fetch(`${API_BASE}/api/Admin/upload`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` },
         body: apiFormData
       });
       if (response.ok) {
-        const data = await response.json();
-        setCatFormData(prev => ({ ...prev, imageUrl: data.imageUrl }));
+        const data = await response.json() as Record<string, unknown>;
+        const url = pickUploadUrl(data);
+        setCatFormData(prev => ({ ...prev, imageUrl: url }));
+      } else {
+        setMessage({ text: 'Image upload failed. Try again.', type: 'error' });
       }
     } catch (err) { console.error(err); }
   };
@@ -356,77 +379,109 @@ function App() {
 
     const apiFormData = new FormData();
     apiFormData.append('file', file);
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
     try {
-      const response = await fetch(`${apiBase}/api/Admin/upload`, {
+      const response = await fetch(`${API_BASE}/api/Admin/upload`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` },
         body: apiFormData
       });
       if (response.ok) {
-        const data = await response.json();
-        setTpFormData(prev => ({ ...prev, imageUrl: data.imageUrl }));
+        const data = await response.json() as Record<string, unknown>;
+        const url = pickUploadUrl(data);
+        setTpFormData(prev => ({ ...prev, imageUrl: url }));
+      } else {
+        setMessage({ text: 'Image upload failed. Try again.', type: 'error' });
       }
     } catch (err) { console.error(err); }
   };
 
   const handleCatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
+    if (!catFormData.name?.trim()) {
+      setMessage({ text: 'Enter a category name.', type: 'error' });
+      return;
+    }
+    if (!catFormData.imageUrl?.trim()) {
+      setMessage({ text: 'Upload a cover image for this category.', type: 'error' });
+      return;
+    }
     try {
-      const response = await fetch(`${apiBase}/api/Admin/category/save`, {
+      const response = await fetch(`${API_BASE}/api/Admin/category/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` },
         body: JSON.stringify(catFormData)
       });
       if (response.ok) {
-        setMessage({ text: 'Category saved!', type: 'success' });
-        setCatFormData({ id: 0, name: '', imageUrl: '' });
-        setCatPreviewUrl('');
+        setMessage({ text: catFormData.id ? 'Category updated.' : 'Category saved.', type: 'success' });
+        resetCatForm();
         fetchCategories();
+      } else {
+        let msg = 'Could not save category.';
+        try {
+          const err = await response.json() as { message?: string };
+          if (err.message) msg = err.message;
+        } catch { /* ignore */ }
+        setMessage({ text: msg, type: 'error' });
       }
     } catch (err) { console.error(err); }
   };
 
   const handleTpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
+    if (!tpFormData.name?.trim()) {
+      setMessage({ text: 'Enter a top pick name.', type: 'error' });
+      return;
+    }
+    if (!tpFormData.imageUrl?.trim()) {
+      setMessage({ text: 'Upload a cover image for this top pick.', type: 'error' });
+      return;
+    }
     try {
-      const response = await fetch(`${apiBase}/api/Admin/top-pick/save`, {
+      const response = await fetch(`${API_BASE}/api/Admin/top-pick/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` },
         body: JSON.stringify(tpFormData)
       });
       if (response.ok) {
-        setMessage({ text: 'Top Pick saved!', type: 'success' });
-        setTpFormData({ id: 0, name: '', imageUrl: '' });
-        setTpPreviewUrl('');
+        setMessage({ text: tpFormData.id ? 'Top pick updated.' : 'Top pick saved.', type: 'success' });
+        resetTpForm();
         fetchTopPicks();
+      } else {
+        let msg = 'Could not save top pick.';
+        try {
+          const err = await response.json() as { message?: string };
+          if (err.message) msg = err.message;
+        } catch { /* ignore */ }
+        setMessage({ text: msg, type: 'error' });
       }
     } catch (err) { console.error(err); }
   };
 
   const handleDeleteCat = async (id: number) => {
-    if (!window.confirm('Delete category?')) return;
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
+    if (!window.confirm('Delete this category?')) return;
     try {
-      const response = await fetch(`${apiBase}/api/Admin/category-delete/${id}`, {
+      const response = await fetch(`${API_BASE}/api/Admin/category-delete/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` }
       });
-      if (response.ok) fetchCategories();
+      if (response.ok) {
+        if (catFormData.id === id) resetCatForm();
+        fetchCategories();
+      }
     } catch (err) { console.error(err); }
   };
 
   const handleDeleteTP = async (id: number) => {
-    if (!window.confirm('Delete top pick?')) return;
-    const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
+    if (!window.confirm('Delete this top pick?')) return;
     try {
-      const response = await fetch(`${apiBase}/api/Admin/top-pick-delete/${id}`, {
+      const response = await fetch(`${API_BASE}/api/Admin/top-pick-delete/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('pixelWallAdminToken')}` }
       });
-      if (response.ok) fetchTopPicks();
+      if (response.ok) {
+        if (tpFormData.id === id) resetTpForm();
+        fetchTopPicks();
+      }
     } catch (err) { console.error(err); }
   };
 
@@ -533,7 +588,10 @@ function App() {
               <label><Tags size={14} /> Categories</label>
               <div className="tags-container">
                 {categories.map(cat => (
-                  <div key={cat.id} className={`tag-option ${formData.categories?.split(',').includes(cat.name) ? 'selected' : ''}`} onClick={() => toggleArrayItem('categories', cat.name)}>{cat.name}</div>
+                  <div key={cat.id} className={`tag-option tag-with-thumb ${formData.categories?.split(',').includes(cat.name) ? 'selected' : ''}`} onClick={() => toggleArrayItem('categories', cat.name)}>
+                    <img src={mediaUrl(cat.imageUrl)} alt="" className="tag-thumb" />
+                    <span>{cat.name}</span>
+                  </div>
                 ))}
               </div>
             </div>
@@ -560,7 +618,10 @@ function App() {
               <label><Star size={14} /> Top Picks</label>
               <div className="tags-container">
                 {topPicks.map(p => (
-                  <div key={p.id} className={`tag-option ${formData.topPicks?.split(',').includes(p.name) ? 'selected' : ''}`} onClick={() => toggleArrayItem('topPicks', p.name)}>{p.name}</div>
+                  <div key={p.id} className={`tag-option tag-with-thumb ${formData.topPicks?.split(',').includes(p.name) ? 'selected' : ''}`} onClick={() => toggleArrayItem('topPicks', p.name)}>
+                    <img src={mediaUrl(p.imageUrl)} alt="" className="tag-thumb" />
+                    <span>{p.name}</span>
+                  </div>
                 ))}
               </div>
             </div>
@@ -582,7 +643,7 @@ function App() {
                 {wallpapers.map(wp => (
                   <div key={wp.id} className="card" style={{ padding: 0, overflow: 'hidden' }}>
                     <div style={{ height: '150px', position: 'relative' }}>
-                      <img src={wp.imageUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={mediaUrl(wp.imageUrl)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       <div style={{ position: 'absolute', top: 5, right: 5, display: 'flex', gap: '5px' }}>
                         <button onClick={() => handleEdit(wp)} style={{ padding: '6px', borderRadius: '50%', border: 'none', background: 'var(--primary)', color: 'white' }}><Settings size={12} /></button>
                         <button onClick={() => handleDelete(wp.id)} style={{ padding: '6px', borderRadius: '50%', border: 'none', background: '#ef4444', color: 'white' }}><Plus style={{ transform: 'rotate(45deg)' }} size={12} /></button>
@@ -623,57 +684,155 @@ function App() {
         )}
 
         {view === 'categories' && (
-          <div className="form-grid" style={{ gridTemplateColumns: '300px 1fr' }}>
-            <div className="form-section">
-              <h3>Add Category</h3>
-              <form onSubmit={handleCatSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <input type="text" placeholder="Category Name" value={catFormData.name} onChange={e => setCatFormData({...catFormData, name: e.target.value})} required />
-                <div className="file-upload-zone" onClick={() => catFileInputRef.current?.click()} style={{ minHeight: '120px' }}>
-                  {catPreviewUrl ? <img src={catPreviewUrl} style={{ maxHeight: '80px', borderRadius: '8px' }} /> : <Plus size={24} />}
-                  <input type="file" ref={catFileInputRef} hidden onChange={handleCatFileChange} />
+          <div className="form-grid catalog-layout">
+            <div className="catalog-form-card">
+              <h3 className="catalog-form-title">{catFormData.id ? 'Edit category' : 'New category'}</h3>
+              <p className="catalog-form-hint">Set a display name and a square or wide cover image. Used on the upload screen and in client apps.</p>
+              <form className="catalog-form" onSubmit={handleCatSubmit}>
+                <div className="form-group">
+                  <label>Category name</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="e.g. Nature, Abstract, Cars"
+                    value={catFormData.name ?? ''}
+                    onChange={e => setCatFormData({ ...catFormData, name: e.target.value })}
+                    required
+                  />
                 </div>
-                <button type="submit" className="submit-btn" disabled={isLoadingCats}>Save</button>
+                <div className="form-group">
+                  <label>Cover image</label>
+                  <div className="file-upload-zone catalog-drop" onClick={() => catFileInputRef.current?.click()}>
+                    {catPreviewUrl ? (
+                      <img src={catPreviewUrl} alt="" className="catalog-preview-img" />
+                    ) : (
+                      <>
+                        <ImageIcon size={28} className="catalog-drop-icon" />
+                        <span className="catalog-drop-text">Click to upload</span>
+                        <span className="catalog-drop-sub">JPG / PNG — compressed on upload</span>
+                      </>
+                    )}
+                    <input type="file" ref={catFileInputRef} hidden onChange={handleCatFileChange} accept="image/*" />
+                  </div>
+                </div>
+                <div className="catalog-form-actions">
+                  <button type="submit" className="submit-btn catalog-submit" disabled={isLoadingCats}>
+                    {isLoadingCats ? <Loader2 className="animate-spin" size={20} /> : (catFormData.id ? 'Update category' : 'Save category')}
+                  </button>
+                  {catFormData.id !== 0 && (
+                    <button type="button" className="btn-secondary" onClick={resetCatForm}>Cancel edit</button>
+                  )}
+                </div>
               </form>
             </div>
-            <div className="form-section">
-              <h3>Existing Categories</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '1rem' }}>
-                {categories.map(c => (
-                  <div key={c.id} className="card" style={{ padding: '0.5rem', position: 'relative' }}>
-                    <img src={c.imageUrl} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />
-                    <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>{c.name}</p>
-                    <button onClick={() => handleDeleteCat(c.id)} style={{ position: 'absolute', top: 5, right: 5, background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Plus style={{ transform: 'rotate(45deg)' }} size={12} /></button>
-                  </div>
-                ))}
+            <div className="catalog-list-panel">
+              <div className="catalog-list-header">
+                <h3>All categories</h3>
+                <span className="catalog-count">{categories.length}</span>
               </div>
+              {isLoadingCats ? (
+                <div className="catalog-loading"><Loader2 className="animate-spin" size={36} /></div>
+              ) : categories.length === 0 ? (
+                <div className="catalog-empty">No categories yet. Add one on the left.</div>
+              ) : (
+                <div className="catalog-grid">
+                  {categories.map(c => (
+                    <article key={c.id} className="catalog-card">
+                      <div className="catalog-card-media">
+                        <img src={mediaUrl(c.imageUrl)} alt="" />
+                        <div className="catalog-card-actions">
+                          <button type="button" className="icon-btn icon-btn-edit" title="Edit" onClick={() => { setCatFormData({ id: c.id, name: c.name, imageUrl: c.imageUrl }); setCatPreviewUrl(mediaUrl(c.imageUrl)); }}>
+                            <Pencil size={14} />
+                          </button>
+                          <button type="button" className="icon-btn icon-btn-delete" title="Delete" onClick={() => handleDeleteCat(c.id)}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="catalog-card-body">
+                        <span className="catalog-card-name">{c.name}</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {view === 'top-picks' && (
-          <div className="form-grid" style={{ gridTemplateColumns: '300px 1fr' }}>
-            <div className="form-section">
-              <h3>Add Top Pick</h3>
-              <form onSubmit={handleTpSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <input type="text" placeholder="Title" value={tpFormData.name} onChange={e => setTpFormData({...tpFormData, name: e.target.value})} required />
-                <div className="file-upload-zone" onClick={() => tpFileInputRef.current?.click()} style={{ minHeight: '120px' }}>
-                  {tpPreviewUrl ? <img src={tpPreviewUrl} style={{ maxHeight: '80px', borderRadius: '8px' }} /> : <Plus size={24} />}
-                  <input type="file" ref={tpFileInputRef} hidden onChange={handleTpFileChange} />
+          <div className="form-grid catalog-layout">
+            <div className="catalog-form-card">
+              <h3 className="catalog-form-title">{tpFormData.id ? 'Edit top pick' : 'New top pick'}</h3>
+              <p className="catalog-form-hint">Name and image for curated collections (for example Editor&apos;s choice). Shown when tagging wallpapers.</p>
+              <form className="catalog-form" onSubmit={handleTpSubmit}>
+                <div className="form-group">
+                  <label>Top pick name</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="e.g. Editor's choice, Seasonal"
+                    value={tpFormData.name ?? ''}
+                    onChange={e => setTpFormData({ ...tpFormData, name: e.target.value })}
+                    required
+                  />
                 </div>
-                <button type="submit" className="submit-btn" disabled={isLoadingTP}>Save</button>
+                <div className="form-group">
+                  <label>Cover image</label>
+                  <div className="file-upload-zone catalog-drop" onClick={() => tpFileInputRef.current?.click()}>
+                    {tpPreviewUrl ? (
+                      <img src={tpPreviewUrl} alt="" className="catalog-preview-img" />
+                    ) : (
+                      <>
+                        <ImageIcon size={28} className="catalog-drop-icon" />
+                        <span className="catalog-drop-text">Click to upload</span>
+                        <span className="catalog-drop-sub">JPG / PNG — compressed on upload</span>
+                      </>
+                    )}
+                    <input type="file" ref={tpFileInputRef} hidden onChange={handleTpFileChange} accept="image/*" />
+                  </div>
+                </div>
+                <div className="catalog-form-actions">
+                  <button type="submit" className="submit-btn catalog-submit" disabled={isLoadingTP}>
+                    {isLoadingTP ? <Loader2 className="animate-spin" size={20} /> : (tpFormData.id ? 'Update top pick' : 'Save top pick')}
+                  </button>
+                  {tpFormData.id !== 0 && (
+                    <button type="button" className="btn-secondary" onClick={resetTpForm}>Cancel edit</button>
+                  )}
+                </div>
               </form>
             </div>
-            <div className="form-section">
-              <h3>Existing Picks</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '1rem' }}>
-                {topPicks.map(t => (
-                  <div key={t.id} className="card" style={{ padding: '0.5rem', position: 'relative' }}>
-                    <img src={t.imageUrl} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />
-                    <p style={{ fontSize: '0.8rem', marginTop: '0.5rem' }}>{t.name}</p>
-                    <button onClick={() => handleDeleteTP(t.id)} style={{ position: 'absolute', top: 5, right: 5, background: '#ef4444', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Plus style={{ transform: 'rotate(45deg)' }} size={12} /></button>
-                  </div>
-                ))}
+            <div className="catalog-list-panel">
+              <div className="catalog-list-header">
+                <h3>All top picks</h3>
+                <span className="catalog-count">{topPicks.length}</span>
               </div>
+              {isLoadingTP ? (
+                <div className="catalog-loading"><Loader2 className="animate-spin" size={36} /></div>
+              ) : topPicks.length === 0 ? (
+                <div className="catalog-empty">No top picks yet. Add one on the left.</div>
+              ) : (
+                <div className="catalog-grid">
+                  {topPicks.map(t => (
+                    <article key={t.id} className="catalog-card catalog-card--star">
+                      <div className="catalog-card-media">
+                        <img src={mediaUrl(t.imageUrl)} alt="" />
+                        <div className="catalog-card-actions">
+                          <button type="button" className="icon-btn icon-btn-edit" title="Edit" onClick={() => { setTpFormData({ id: t.id, name: t.name, imageUrl: t.imageUrl }); setTpPreviewUrl(mediaUrl(t.imageUrl)); }}>
+                            <Pencil size={14} />
+                          </button>
+                          <button type="button" className="icon-btn icon-btn-delete" title="Delete" onClick={() => handleDeleteTP(t.id)}>
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="catalog-card-body">
+                        <span className="catalog-card-name">{t.name}</span>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
