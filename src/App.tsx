@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
-import { 
-  Plus, 
-  Image as ImageIcon, 
-  Tag, 
-  Palette, 
-  TrendingUp, 
-  BarChart2, 
-  Settings, 
+import {
+  Plus,
+  Image as ImageIcon,
+  Tag,
+  Palette,
+  TrendingUp,
+  BarChart2,
+  Settings,
   LogOut,
   Layers,
   Flame,
@@ -23,6 +23,7 @@ interface Wallpaper {
   categories: string;
   colors: string;
   types: string;
+  topPicks: string;
   viewCount: number;
 }
 
@@ -34,15 +35,22 @@ interface UserProfile {
   photoUrl: string | null;
 }
 
-const CATEGORIES = ['Abstract', 'Nature', 'Space', 'Minimal', 'Animals', 'Technology', 'Architecture', 'Gaming', 'Fantasy'];
+const CATEGORIES = [
+  'Abstract', 'Aesthatic', 'AI', 'Animals', 'Art', 'Birds', 'Bokeh', 'Buildings', 
+  'Flowers', 'Foods', 'Galaxy', 'Gradient', 'Historical', 'Horror', 'Insects', 
+  'Landscapes', 'Love', 'Minimal', 'Music', 'Nature', 'Neon', 'Pattern', 
+  'Rainbow', 'Seascapes', 'Shadow', 'Sunrise & Sunset', 'Texture', 'Vehicles', 
+  'Vibrant', 'Vintage'
+];
 const COLORS = ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange', 'Pink', 'Black', 'White', 'Cyan', 'Indigo'];
 const TYPES = ['Trending', 'Hot', 'New'];
+const TOP_PICKS = ['Coal Black', 'Lovely Vibe', 'Speed Snap', 'Beach Life', 'Wild Life'];
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [view, setView] = useState<'upload' | 'list' | 'users'>('upload');
-  
+
   const [formData, setFormData] = useState<Partial<Wallpaper>>({
     id: 0,
     title: '',
@@ -50,6 +58,7 @@ function App() {
     categories: '',
     colors: '',
     types: '',
+    topPicks: '',
     viewCount: 0
   });
 
@@ -128,7 +137,7 @@ function App() {
     }
   };
 
-  const toggleArrayItem = (field: 'categories' | 'colors' | 'types', item: string) => {
+  const toggleArrayItem = (field: 'categories' | 'colors' | 'types' | 'topPicks', item: string) => {
     setFormData((prev: any) => {
       const current = prev[field] ? prev[field]!.split(',').filter((x: string) => x) : [];
       let next: string[];
@@ -261,6 +270,7 @@ function App() {
           categories: '',
           colors: '',
           types: '',
+          topPicks: '',
           viewCount: 0
         });
         setPreviewUrl('');
@@ -283,35 +293,35 @@ function App() {
 
   if (!isLoggedIn) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
         minHeight: '100vh',
         background: 'radial-gradient(circle at top right, #1e1b4b, #0f172a)'
       }}>
         <form className="form-grid" style={{ width: '100%', maxWidth: '450px', display: 'flex', flexDirection: 'column' }} onSubmit={handleLogin}>
           <div className="logo" style={{ alignSelf: 'center', marginBottom: '2rem' }}>PIXELWALL<span>.ADMIN</span></div>
           <h2 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>Admin Login</h2>
-          
+
           <div className="form-group" style={{ marginBottom: '1rem' }}>
             <label>Email Address</label>
-            <input 
-              type="email" 
-              className="input-field" 
+            <input
+              type="email"
+              className="input-field"
               value={loginForm.email}
-              onChange={(e) => setLoginForm({...loginForm, email: e.target.value})}
+              onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
               required
             />
           </div>
 
           <div className="form-group" style={{ marginBottom: '2rem' }}>
             <label>Password</label>
-            <input 
-              type="password" 
-              className="input-field" 
+            <input
+              type="password"
+              className="input-field"
               value={loginForm.password}
-              onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+              onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
               required
             />
           </div>
@@ -319,7 +329,7 @@ function App() {
           <button type="submit" className="submit-btn" style={{ gridColumn: 'auto' }}>
             Sign In to Dashboard
           </button>
-          
+
           {message.text && (
             <p style={{ color: '#ef4444', textAlign: 'center', marginTop: '1rem' }}>{message.text}</p>
           )}
@@ -349,9 +359,9 @@ function App() {
             <p style={{ color: 'var(--text-dim)', marginTop: '0.5rem' }}>Add high-quality visuals to your collection.</p>
           </div>
           {message.text && (
-            <div style={{ 
-              padding: '1rem 1.5rem', 
-              borderRadius: '12px', 
+            <div style={{
+              padding: '1rem 1.5rem',
+              borderRadius: '12px',
               background: message.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
               color: message.type === 'success' ? 'var(--success)' : '#ef4444',
               border: `1px solid ${message.type === 'success' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`,
@@ -371,10 +381,10 @@ function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label>Title</label>
                 {formData.id !== 0 && (
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => {
-                      setFormData({ id: 0, title: '', imageUrl: '', categories: '', colors: '', types: '', viewCount: 0 });
+                      setFormData({ id: 0, title: '', imageUrl: '', categories: '', colors: '', types: '', topPicks: '', viewCount: 0 });
                       setPreviewUrl('');
                     }}
                     style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontSize: '0.75rem' }}
@@ -383,18 +393,18 @@ function App() {
                   </button>
                 )}
               </div>
-              <input 
-                type="text" 
-                className="input-field" 
+              <input
+                type="text"
+                className="input-field"
                 placeholder="e.g. Neon Cyberpunk City"
                 value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 required
               />
             </div>
 
-            <div 
-              className="file-upload-zone" 
+            <div
+              className="file-upload-zone"
               onClick={() => fileInputRef.current?.click()}
             >
               {isUploading ? (
@@ -403,18 +413,18 @@ function App() {
                   <p>Uploading and compressing image...</p>
                 </div>
               ) : previewUrl ? (
-                <img 
+                <img
                   src={(() => {
                     const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
                     if (previewUrl.startsWith('data:') || previewUrl.startsWith('http')) return previewUrl;
                     if (previewUrl.includes('\\') || previewUrl.includes(':')) {
                       const parts = previewUrl.split(/[\\/]/);
-                      return `${apiBase}/wallpapers/${parts[parts.length-1]}`;
+                      return `${apiBase}/wallpapers/${parts[parts.length - 1]}`;
                     }
                     return `${apiBase}${previewUrl}`;
-                  })()} 
-                  alt="Preview" 
-                  className="preview-image" 
+                  })()}
+                  alt="Preview"
+                  className="preview-image"
                 />
               ) : (
                 <>
@@ -427,10 +437,10 @@ function App() {
                   </div>
                 </>
               )}
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                style={{ display: 'none' }} 
+              <input
+                type="file"
+                ref={fileInputRef}
+                style={{ display: 'none' }}
                 accept="image/*"
                 onChange={handleFileChange}
               />
@@ -440,7 +450,7 @@ function App() {
               <label><Tag size={14} style={{ marginRight: '0.5rem' }} /> Category</label>
               <div className="tags-container">
                 {CATEGORIES.map(cat => (
-                  <div 
+                  <div
                     key={cat}
                     className={`tag-option ${formData.categories?.split(',').includes(cat) ? 'selected' : ''}`}
                     onClick={() => toggleArrayItem('categories', cat)}
@@ -455,7 +465,7 @@ function App() {
               <label><Palette size={14} style={{ marginRight: '0.5rem' }} /> Primary Colors</label>
               <div className="tags-container">
                 {COLORS.map(color => (
-                  <div 
+                  <div
                     key={color}
                     className={`tag-option ${formData.colors?.split(',').includes(color) ? 'selected' : ''}`}
                     onClick={() => toggleArrayItem('colors', color)}
@@ -470,7 +480,7 @@ function App() {
               <label><TrendingUp size={14} style={{ marginRight: '0.5rem' }} /> Featured Status</label>
               <div className="tags-container">
                 {TYPES.map(type => (
-                  <div 
+                  <div
                     key={type}
                     className={`tag-option ${formData.types?.split(',').includes(type) ? 'selected' : ''}`}
                     onClick={() => toggleArrayItem('types', type)}
@@ -486,18 +496,33 @@ function App() {
             </div>
 
             <div className="form-group">
+              <label><Star size={14} style={{ marginRight: '0.5rem' }} /> Top Picks</label>
+              <div className="tags-container">
+                {TOP_PICKS.map(pick => (
+                  <div
+                    key={pick}
+                    className={`tag-option ${formData.topPicks?.split(',').includes(pick) ? 'selected' : ''}`}
+                    onClick={() => toggleArrayItem('topPicks', pick)}
+                  >
+                    {pick}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="form-group">
               <label><Eye size={14} style={{ marginRight: '0.5rem' }} /> View Count</label>
-              <input 
-                type="number" 
-                className="input-field" 
+              <input
+                type="number"
+                className="input-field"
                 value={formData.viewCount}
-                onChange={(e) => setFormData({...formData, viewCount: parseInt(e.target.value) || 0})}
+                onChange={(e) => setFormData({ ...formData, viewCount: parseInt(e.target.value) || 0 })}
               />
             </div>
 
-            <button 
-              type="submit" 
-              className="submit-btn" 
+            <button
+              type="submit"
+              className="submit-btn"
               disabled={isSubmitting || isUploading || !formData.title || !formData.imageUrl}
             >
               {isSubmitting ? (
@@ -516,7 +541,7 @@ function App() {
               <h2>Manage Wallpapers</h2>
               <button onClick={fetchWallpapers} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}>Refresh</button>
             </div>
-            
+
             {isLoadingList ? (
               <div style={{ padding: '4rem', textAlign: 'center' }}><Loader2 className="animate-spin" size={40} style={{ margin: '0 auto' }} /></div>
             ) : (
@@ -524,12 +549,12 @@ function App() {
                 {wallpapers.map(wp => (
                   <div key={wp.id} style={{ background: 'var(--surface)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border)' }}>
                     <div style={{ height: '150px', position: 'relative' }}>
-                      <img 
+                      <img
                         src={(() => {
                           const apiBase = 'https://loopbit-pixelwall.azurewebsites.net';
                           if (!wp.imageUrl) return 'https://placehold.co/400x300?text=No+Path';
                           if (wp.imageUrl.startsWith('http')) return wp.imageUrl;
-                          
+
                           // If it's a local Windows path from an old test, extract filename
                           if (wp.imageUrl.includes('\\') || wp.imageUrl.includes(':')) {
                             const parts = wp.imageUrl.split(/[\\/]/);
@@ -537,12 +562,12 @@ function App() {
                             return `${apiBase}/wallpapers/${fileName}`;
                           }
                           return `${apiBase}${wp.imageUrl}`;
-                        })()} 
-                        alt={wp.title} 
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        })()}
+                        alt={wp.title}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.src = 'https://placehold.co/400x300?text=Image+Missing'; 
+                          target.src = 'https://placehold.co/400x300?text=Image+Missing';
                         }}
                       />
                       <div style={{ position: 'absolute', top: '10px', right: '10px', display: 'flex', gap: '5px' }}>
@@ -563,63 +588,63 @@ function App() {
           </div>
         ) : (
           <div style={{ background: 'rgba(30, 41, 59, 0.4)', borderRadius: '24px', padding: '2rem', border: '1px solid var(--border)' }}>
-             <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-               <h2>Registered Users</h2>
-               <button onClick={fetchUsers} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}>Refresh</button>
-             </div>
+            <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2>Registered Users</h2>
+              <button onClick={fetchUsers} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}>Refresh</button>
+            </div>
 
-             {isLoadingUsers ? (
-               <div style={{ padding: '4rem', textAlign: 'center' }}><Loader2 className="animate-spin" size={40} style={{ margin: '0 auto' }} /></div>
-             ) : (
-               <div style={{ overflowX: 'auto' }}>
-                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                   <thead>
-                     <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.875rem' }}>
-                       <th style={{ padding: '1rem' }}>User</th>
-                       <th style={{ padding: '1rem' }}>Role</th>
-                       <th style={{ padding: '1rem' }}>Actions</th>
-                     </tr>
-                   </thead>
-                   <tbody>
-                     {users.map(user => (
-                       <tr key={user.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                         <td style={{ padding: '1rem' }}>
-                           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                             <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--surface)', overflow: 'hidden' }}>
-                               <img src={user.photoUrl || `https://ui-avatars.com/api/?name=${user.email}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                             </div>
-                             <div>
-                               <div style={{ fontWeight: 600 }}>{user.displayName || 'Unnamed User'}</div>
-                               <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{user.email}</div>
-                             </div>
-                           </div>
-                         </td>
-                         <td style={{ padding: '1rem' }}>
-                           <span style={{ 
-                             padding: '0.25rem 0.75rem', 
-                             borderRadius: '12px', 
-                             fontSize: '0.75rem', 
-                             background: user.role === 'Admin' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(148, 163, 184, 0.2)',
-                             color: user.role === 'Admin' ? 'var(--primary)' : 'var(--text-dim)',
-                             border: `1px solid ${user.role === 'Admin' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(148, 163, 184, 0.3)'}`
-                           }}>
-                             {user.role}
-                           </span>
-                         </td>
-                         <td style={{ padding: '1rem' }}>
-                           <button 
-                             onClick={() => handleDeleteUser(user.id)} 
-                             style={{ padding: '8px', borderRadius: '8px', border: 'none', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', cursor: 'pointer' }}
-                           >
-                             <Plus style={{ transform: 'rotate(45deg)' }} size={16} />
-                           </button>
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
-                 </table>
-               </div>
-             )}
+            {isLoadingUsers ? (
+              <div style={{ padding: '4rem', textAlign: 'center' }}><Loader2 className="animate-spin" size={40} style={{ margin: '0 auto' }} /></div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', color: 'var(--text-dim)', fontSize: '0.875rem' }}>
+                      <th style={{ padding: '1rem' }}>User</th>
+                      <th style={{ padding: '1rem' }}>Role</th>
+                      <th style={{ padding: '1rem' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map(user => (
+                      <tr key={user.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--surface)', overflow: 'hidden' }}>
+                              <img src={user.photoUrl || `https://ui-avatars.com/api/?name=${user.email}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            </div>
+                            <div>
+                              <div style={{ fontWeight: 600 }}>{user.displayName || 'Unnamed User'}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-dim)' }}>{user.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <span style={{
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '12px',
+                            fontSize: '0.75rem',
+                            background: user.role === 'Admin' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(148, 163, 184, 0.2)',
+                            color: user.role === 'Admin' ? 'var(--primary)' : 'var(--text-dim)',
+                            border: `1px solid ${user.role === 'Admin' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(148, 163, 184, 0.3)'}`
+                          }}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <button
+                            onClick={() => handleDeleteUser(user.id)}
+                            style={{ padding: '8px', borderRadius: '8px', border: 'none', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', cursor: 'pointer' }}
+                          >
+                            <Plus style={{ transform: 'rotate(45deg)' }} size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </main>
